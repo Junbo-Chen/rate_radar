@@ -1,5 +1,6 @@
 import type { Measurement, WindowKey } from '../api/contract'
 import { windowLabel, WINDOW_KEYS } from '../api/contract'
+import { useTimezone } from '../hooks/useTimezone'
 import { formatNumber, formatTimeExact } from '../lib/format'
 import { StatusBadge } from './StatusBadge'
 import './AlertList.css'
@@ -31,6 +32,8 @@ export function collectAlerts(measurements: Measurement[]): Alert[] {
 }
 
 export function AlertList({ alerts }: { alerts: Alert[] }) {
+  const { mode } = useTimezone()
+
   return (
     <section className="alerts">
       <header className="alerts__head">
@@ -48,7 +51,7 @@ export function AlertList({ alerts }: { alerts: Alert[] }) {
         <ol className="alerts__list">
           {alerts.map((alert) => (
             <li key={`${alert.iso}-${alert.windowKey}`} className="alerts__item">
-              <span className="alerts__time">{formatTimeExact(alert.iso)}</span>
+              <span className="alerts__time">{formatTimeExact(alert.iso, mode)}</span>
               <span className="alerts__window">{windowLabel(alert.windowKey)}</span>
               <span className="alerts__counts">
                 {formatNumber(alert.used)} / {formatNumber(alert.limit)}

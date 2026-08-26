@@ -1,41 +1,48 @@
-import { parseMeasurements, type Measurement } from './contract'
+import { parseMeasurements, type Measurement } from "./contract";
 
-/**
- * Waar de data vandaan komt. Zolang Eric's endpoint nog niet draait staat dit
- * op 'mock'; daarna schakel je in de UI (of via VITE_API_URL) over op 'live'.
- */
-export type SourceKind = 'mock' | 'live'
+export type SourceKind = "mock" | "live";
 
-export const MOCK_URL = '/mock/rate-limits.json'
+export const MOCK_URL = "/mock/rate-limits.json";
 
-/** Het Laravel-endpoint, in te stellen via .env (zie .env.example). */
-export const LIVE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000/api/rate-limits'
+export const LIVE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000/api/rate-limits";
 
 export function sourceUrl(kind: SourceKind): string {
-  return kind === 'mock' ? MOCK_URL : LIVE_URL
+  return kind === "mock" ? MOCK_URL : LIVE_URL;
 }
 
 export async function fetchMeasurements(
   kind: SourceKind,
   signal?: AbortSignal,
 ): Promise<Measurement[]> {
-  const url = sourceUrl(kind)
+  const url = sourceUrl(kind);
 
-  let response: Response
+  let response: Response;
   try {
-    response = await fetch(url, { signal, headers: { Accept: 'application/json' } })
+    response = await fetch(url, { signal, headers: { Accept: "application/json" } });
   } catch (cause) {
-    if (cause instanceof DOMException && cause.name === 'AbortError') throw cause
+    if (cause instanceof DOMException && cause.name === "AbortError") throw cause;
     throw new Error(
-      kind === 'live'
+      kind === "live"
         ? `Geen verbinding met ${url}. Draait de Laravel-server al?`
         : `Kon het mockup-bestand niet laden (${url}).`,
-    )
+    );
   }
 
   if (!response.ok) {
-    throw new Error(`${url} gaf HTTP ${response.status} ${response.statusText}.`)
+    throw new Error(`${url} gaf HTTP ${response.status} ${response.statusText}.`);
   }
 
-  return parseMeasurements(await response.json())
+  // De metingen houden hun eigen tijdstempels — precies wat de bron teruggeeft.
+  // Ze naar "nu" schuiven zou de tijden op het scherm laten afwijken van wat er
+  // in het bestand (en straks in Eric's database) staat.
+  //
+  // Wat er wél afgaat: metingen die nog niet gebeurd kunnen zijn. De mockup is
+  // een vaste dagreeks tot 15:59:55Z, dus vroeg op de dag staat een deel daarvan
+  // in de toekomst. Een dashboard hoort niet te tonen wat nog moet komen.
+  return excludeFuture(parseMeasurements(await response.json()))
+}
+
+/** Laat alleen metingen door waarvan het tijdstip al geweest is. */
+function excludeFuture(measurements: Measurement[], now: number = Date.now()): Measurement[] {
+  return measurements.filter((measurement) => Date.parse(measurement.timestamp) <= now)
 }

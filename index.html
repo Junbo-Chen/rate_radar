@@ -3,12 +3,30 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
       content="Dashboard voor de API-limieten van Lightspeed-webshops, met nadruk op het 5-minutenvenster."
     />
     <title>RateRadar</title>
+    <script>
+      // Zet het opgeslagen thema vóór de eerste paint. Doet React dit pas in een
+      // effect, dan zie je bij het laden kort de lichte versie oplichten voordat
+      // donker aanslaat.
+      (function () {
+        try {
+          var theme = localStorage.getItem('rateradar:theme')
+          if (theme === 'light' || theme === 'dark') {
+            document.documentElement.setAttribute('data-theme', theme)
+          }
+        } catch (error) {
+          // Geblokkeerde opslag: dan volgt de pagina gewoon de systeemvoorkeur.
+        }
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -1,0 +1,85 @@
+.modal {
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text-primary);
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.22);
+  inline-size: min(560px, calc(100vw - 32px));
+  max-block-size: calc(100vh - 64px);
+  overflow: visible;
+}
+
+.modal::backdrop {
+  background: rgba(8, 8, 8, 0.45);
+  backdrop-filter: blur(2px);
+}
+
+/* Alleen animeren bij het openen; sluiten gaat direct, anders blijft de
+   backdrop hangen zolang de animatie loopt. */
+.modal[open] {
+  animation: modal-in 160ms ease;
+}
+
+.modal[open]::backdrop {
+  animation: modal-backdrop-in 160ms ease;
+}
+
+@keyframes modal-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+}
+
+@keyframes modal-backdrop-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modal[open],
+  .modal[open]::backdrop {
+    animation: none;
+  }
+}
+
+.modal__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px 22px 22px;
+}
+
+.modal__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.modal__title {
+  font-size: 16px;
+  font-weight: 650;
+}
+
+.modal__close {
+  display: flex;
+  padding: 5px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.modal__close:hover {
+  background: var(--surface-sunken);
+  color: var(--text-primary);
+}
+
+.modal__close svg {
+  inline-size: 16px;
+  block-size: 16px;
+}

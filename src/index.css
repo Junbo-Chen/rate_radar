@@ -1,79 +1,83 @@
 /*
- * Design tokens. Licht is de basis; donker herdefinieert alleen de waarden,
- * onder zowel de OS-voorkeur als de handmatige thema-schakelaar.
+ * Design tokens. Licht is de basis; donker herdefinieert alleen de waarden.
  */
 :root {
   color-scheme: light;
 
-  --page: #f9f9f7;
-  --surface: #fcfcfb;
-  --surface-sunken: #f2f2ee;
+  --page: #f4f4f1;
+  --surface: #ffffff;
+  --surface-sunken: #f0efeb;
+  --surface-hover: #f7f7f4;
 
-  --text-primary: #0b0b0b;
-  --text-secondary: #52514e;
-  --text-muted: #898781;
+  --text-primary: #0c0c0b;
+  --text-secondary: #5c5b57;
+  --text-muted: #8a8983;
 
-  --grid: #e1e0d9;
-  --axis: #c3c2b7;
-  --border: rgba(11, 11, 11, 0.1);
-  --border-strong: rgba(11, 11, 11, 0.18);
+  --grid: #e4e3dc;
+  --axis: #c5c4b9;
+  --border: rgba(12, 12, 11, 0.09);
+  --border-strong: rgba(12, 12, 11, 0.16);
 
-  /* De enige serie-kleur: het gemeten verbruik. */
-  --series: #2a78d6;
+  --series: #2563eb;
 
-  /* Statuskleuren zijn gereserveerd en worden nooit als serie gebruikt. */
-  --status-ok: #0ca30c;
-  --status-warning: #ec835a;
-  --status-critical: #d03b3b;
+  --status-ok: #16a34a;
+  --status-warning: #ea580c;
+  --status-critical: #dc2626;
 
-  --radius: 10px;
-  --shadow: 0 1px 2px rgba(11, 11, 11, 0.04), 0 1px 12px rgba(11, 11, 11, 0.03);
+  --radius: 14px;
+  --radius-sm: 10px;
+  --shadow: 0 1px 2px rgba(12, 12, 11, 0.04), 0 4px 16px rgba(12, 12, 11, 0.05);
+  --shadow-hover: 0 2px 4px rgba(12, 12, 11, 0.05), 0 8px 24px rgba(12, 12, 11, 0.08);
 
-  --font-sans: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
     color-scheme: dark;
 
-    --page: #0d0d0d;
-    --surface: #1a1a19;
-    --surface-sunken: #232322;
+    --page: #0a0a0a;
+    --surface: #161615;
+    --surface-sunken: #1e1e1c;
+    --surface-hover: #1c1c1a;
 
-    --text-primary: #ffffff;
-    --text-secondary: #c3c2b7;
-    --text-muted: #898781;
+    --text-primary: #f5f5f4;
+    --text-secondary: #a8a79e;
+    --text-muted: #73726c;
 
-    --grid: #2c2c2a;
-    --axis: #383835;
-    --border: rgba(255, 255, 255, 0.1);
-    --border-strong: rgba(255, 255, 255, 0.18);
+    --grid: #2a2a28;
+    --axis: #3a3a36;
+    --border: rgba(255, 255, 255, 0.08);
+    --border-strong: rgba(255, 255, 255, 0.14);
 
-    --series: #3987e5;
+    --series: #3b82f6;
 
-    --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 12px rgba(0, 0, 0, 0.25);
+    --shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 4px 16px rgba(0, 0, 0, 0.35);
+    --shadow-hover: 0 2px 4px rgba(0, 0, 0, 0.5), 0 8px 28px rgba(0, 0, 0, 0.45);
   }
 }
 
 :root[data-theme='dark'] {
   color-scheme: dark;
 
-  --page: #0d0d0d;
-  --surface: #1a1a19;
-  --surface-sunken: #232322;
+  --page: #0a0a0a;
+  --surface: #161615;
+  --surface-sunken: #1e1e1c;
+  --surface-hover: #1c1c1a;
 
-  --text-primary: #ffffff;
-  --text-secondary: #c3c2b7;
-  --text-muted: #898781;
+  --text-primary: #f5f5f4;
+  --text-secondary: #a8a79e;
+  --text-muted: #73726c;
 
-  --grid: #2c2c2a;
-  --axis: #383835;
-  --border: rgba(255, 255, 255, 0.1);
-  --border-strong: rgba(255, 255, 255, 0.18);
+  --grid: #2a2a28;
+  --axis: #3a3a36;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.14);
 
-  --series: #3987e5;
+  --series: #3b82f6;
 
-  --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 1px 12px rgba(0, 0, 0, 0.25);
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 4px 16px rgba(0, 0, 0, 0.35);
+  --shadow-hover: 0 2px 4px rgba(0, 0, 0, 0.5), 0 8px 28px rgba(0, 0, 0, 0.45);
 }
 
 *,
@@ -98,12 +102,10 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-h1,
-h2,
-h3 {
+h1, h2, h3 {
   margin: 0;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+  font-weight: 650;
+  letter-spacing: -0.025em;
 }
 
 button {
@@ -114,12 +116,79 @@ button {
 :focus-visible {
   outline: 2px solid var(--series);
   outline-offset: 2px;
-  border-radius: 4px;
+  border-radius: 6px;
+}
+
+/*
+ * Systeemthema krijgt de radar-GIF als achtergrond. Alleen daar: kiest iemand
+ * expliciet licht of donker, dan blijft het vlak.
+ *
+ * `:root:not([data-theme])` is precies de systeemstand — de hook haalt het
+ * attribuut dan weg in plaats van het op een waarde te zetten.
+ *
+ * De GIF is 500x500 met een transparante achtergrond, dus hij staat als één
+ * gecentreerd watermerk op het scherm. Uitrekken tot `cover` zou hem flink
+ * opblazen en blokkerig maken.
+ *
+ * Twee knoppen om aan te draaien: `background-size` voor hoe groot, en
+ * `opacity` voor hoe nadrukkelijk.
+ */
+:root:not([data-theme]) body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: url('/image/image.webp');
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: max(100%, 100%);
+  opacity: 0.9;
+  background-color: #b1d2f4;
+}
+
+/* Een bewegende achtergrond is precies waar deze voorkeur over gaat. */
+@media (prefers-reduced-motion: reduce) {
+  :root:not([data-theme]) body::before {
+    display: none;
+  }
+}
+
+/*
+ * Thema wisselen: een korte crossfade over alles wat kleur draagt.
+ *
+ * De klasse staat er alleen tijdens de wissel (~220ms). Permanent een
+ * transition op `*` zetten zou elke hover, elke grafiekupdate en elke
+ * meterbeweging meeslepen — dat voelt traag in plaats van soepel.
+ *
+ * fill en stroke staan erbij omdat de grafieken SVG zijn: zonder die twee
+ * klappen de lijnen en de gevarenzone hard om terwijl de rest nog vervaagt.
+ */
+.theme-switching,
+.theme-switching *,
+.theme-switching *::before,
+.theme-switching *::after {
+  transition:
+    background-color 200ms ease,
+    border-color 200ms ease,
+    color 200ms ease,
+    fill 200ms ease,
+    stroke 200ms ease,
+    box-shadow 200ms ease !important;
+  transition-delay: 0s !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
   * {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
+  }
+
+  /* Moet de regel hierboven overrulen: die heeft een hogere specificiteit. */
+  .theme-switching,
+  .theme-switching *,
+  .theme-switching *::before,
+  .theme-switching *::after {
+    transition: none !important;
   }
 }

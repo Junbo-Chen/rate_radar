@@ -47,6 +47,11 @@
   font-variant-numeric: tabular-nums;
 }
 
+.chart-tip__peak {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
 .chart-tip__value {
   margin: 1px 0 7px;
   font-size: 14px;

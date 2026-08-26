@@ -86,6 +86,7 @@ export function Toolbar({
         onChange={onRangeChange}
       />
 
+
       <div className="toolbar__group toolbar__group--end">
         <label className="toolbar__switch">
           <input

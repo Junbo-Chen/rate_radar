@@ -1,5 +1,6 @@
 import type { Measurement } from '../api/contract'
 import { windowLabel, WINDOW_KEYS } from '../api/contract'
+import { useTimezone } from '../hooks/useTimezone'
 import { formatDateTime, formatNumber, formatPercent } from '../lib/format'
 import { statusOf, STATUS_LABELS, usageRatio } from '../lib/status'
 import './DataTable.css'
@@ -9,6 +10,7 @@ import './DataTable.css'
  * toont staat hier ook als tekst, zodat niets alleen via kleur afleesbaar is.
  */
 export function DataTable({ measurements }: { measurements: Measurement[] }) {
+  const { mode } = useTimezone()
   // Nieuwste bovenaan, net als de meldingenlijst.
   const rows = [...measurements].reverse()
 
@@ -33,7 +35,7 @@ export function DataTable({ measurements }: { measurements: Measurement[] }) {
           <tbody>
             {rows.map((measurement) => (
               <tr key={measurement.timestamp}>
-                <th scope="row">{formatDateTime(measurement.timestamp)}</th>
+                <th scope="row">{formatDateTime(measurement.timestamp, mode)}</th>
                 {WINDOW_KEYS.map((key) => {
                   const reading = measurement.limits[key]
                   return [
