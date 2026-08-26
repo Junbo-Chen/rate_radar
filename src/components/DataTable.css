@@ -1,0 +1,61 @@
+.table-view {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.table-view__summary {
+  padding: 14px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  list-style-position: inside;
+}
+
+.table-view__summary:hover {
+  color: var(--text-secondary);
+}
+
+/* Brede tabel scrolt in zijn eigen kader; de pagina zelf nooit horizontaal. */
+.table-view__scroll {
+  max-block-size: 420px;
+  overflow: auto;
+  border-block-start: 1px solid var(--grid);
+}
+
+.table-view__table {
+  inline-size: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.table-view__table th,
+.table-view__table td {
+  padding: 8px 14px;
+  text-align: start;
+  white-space: nowrap;
+  border-block-end: 1px solid var(--grid);
+}
+
+.table-view__table thead th {
+  position: sticky;
+  inset-block-start: 0;
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.table-view__table tbody th {
+  font-weight: 600;
+}
+
+.table-view__num {
+  color: var(--text-primary);
+}
+
+.table-view__pct {
+  color: var(--text-muted);
+}

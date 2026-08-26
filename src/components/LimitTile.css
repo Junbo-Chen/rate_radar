@@ -1,0 +1,93 @@
+.tile {
+  --meter-color: var(--status-ok);
+
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 18px 20px 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.tile--warning {
+  --meter-color: var(--status-warning);
+}
+.tile--critical {
+  --meter-color: var(--status-critical);
+}
+
+.tile__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tile__label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+/* Proportionele cijfers: tabular-nums maakt een groot getal als 121 los. */
+.tile__value {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 34px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+}
+
+.tile--hero .tile__value {
+  font-size: 56px;
+}
+
+.tile__unit {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  letter-spacing: 0;
+}
+
+/* De vulling draagt de ernst; het spoor is een lichtere stap van dezelfde
+   kleur, zodat de staat over de hele balk afleesbaar blijft. */
+.tile__meter {
+  position: relative;
+  block-size: 8px;
+  border-radius: 999px;
+  background: color-mix(in oklab, var(--meter-color) 18%, var(--surface));
+  overflow: hidden;
+}
+
+.tile__meter-fill {
+  block-size: 100%;
+  border-radius: 999px;
+  background: var(--meter-color);
+  transition: inline-size 240ms ease, background-color 240ms ease;
+}
+
+.tile__meter-mark {
+  position: absolute;
+  inset-block: 0;
+  inline-size: 1px;
+  background: var(--surface);
+}
+
+.tile__counts {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.tile__hits {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}

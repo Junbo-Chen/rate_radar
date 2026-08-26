@@ -1,0 +1,44 @@
+/* Het icoon draagt de statuskleur; de tekst blijft gewone inkt — een lichte
+   tint als oranje is als tekst niet leesbaar op de ondergrond. */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  border: 1px solid var(--badge-color);
+  color: var(--text-primary);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.badge--ok {
+  --badge-color: var(--status-ok);
+}
+.badge--warning {
+  --badge-color: var(--status-warning);
+}
+.badge--critical {
+  --badge-color: var(--status-critical);
+}
+
+.badge--md {
+  padding: 3px 11px 3px 8px;
+  font-size: 13px;
+}
+
+.badge--sm {
+  padding: 1px 9px 1px 6px;
+  font-size: 12px;
+}
+
+.badge svg {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  color: var(--badge-color);
+}
+
+.badge--sm svg {
+  width: 12px;
+  height: 12px;
+}

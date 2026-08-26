@@ -1,0 +1,58 @@
+import type { LimitReading, WindowKey } from '../api/contract'
+import { windowLabel } from '../api/contract'
+import { formatNumber, formatPercent } from '../lib/format'
+import { statusOf, usageRatio, WARNING_THRESHOLD } from '../lib/status'
+import { StatusBadge } from './StatusBadge'
+import './LimitTile.css'
+
+interface Props {
+  windowKey: WindowKey
+  reading: LimitReading
+  /** De 5-minutenlimiet is de kritieke; die krijgt het grote kengetal. */
+  variant?: 'hero' | 'tile'
+  /** Aantal 429's in de getoonde periode, voor de regel onder de meter. */
+  hitCount?: number
+}
+
+export function LimitTile({ windowKey, reading, variant = 'tile', hitCount = 0 }: Props) {
+  const ratio = usageRatio(reading)
+  const status = statusOf(reading)
+  const fillPercent = Math.min(100, ratio * 100)
+
+  return (
+    <article className={`tile tile--${variant} tile--${status}`}>
+      <header className="tile__head">
+        <h3 className="tile__label">{windowLabel(windowKey)}</h3>
+        <StatusBadge status={status} size={variant === 'hero' ? 'md' : 'sm'} />
+      </header>
+
+      <p className="tile__value">
+        {formatPercent(ratio)}
+        <span className="tile__unit">verbruikt</span>
+      </p>
+
+      <div
+        className="tile__meter"
+        role="meter"
+        aria-valuenow={reading.used}
+        aria-valuemin={0}
+        aria-valuemax={reading.limit}
+        aria-label={`${windowLabel(windowKey)}: ${reading.used} van ${reading.limit} calls`}
+      >
+        <div className="tile__meter-fill" style={{ inlineSize: `${fillPercent}%` }} />
+        {/* Vaste markering op 80%: de grens waarboven de indicator oranje wordt. */}
+        <span className="tile__meter-mark" style={{ insetInlineStart: `${WARNING_THRESHOLD * 100}%` }} />
+      </div>
+
+      <p className="tile__counts">
+        <strong>{formatNumber(reading.used)}</strong> van {formatNumber(reading.limit)} calls
+      </p>
+
+      {hitCount > 0 && (
+        <p className="tile__hits">
+          {hitCount}× een 429 in deze periode
+        </p>
+      )}
+    </article>
+  )
+}

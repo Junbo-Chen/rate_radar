@@ -1,0 +1,65 @@
+.chart {
+  margin: 0;
+  padding: 18px 20px 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.chart__caption {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-block-end: 14px;
+}
+
+.chart__title {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.chart__subtitle {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+/* De hoogte omvat de x-as-band, zodat de kaart geen eigen scrollbalk krijgt. */
+.chart__plot {
+  inline-size: 100%;
+}
+
+.chart-tip {
+  min-inline-size: 140px;
+  padding: 9px 11px 10px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.chart-tip__time {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.chart-tip__value {
+  margin: 1px 0 7px;
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.chart-tip__value span {
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+/* Recharts tekent een focus-outline om het SVG-oppervlak; die voegt niets toe. */
+.chart .recharts-surface:focus {
+  outline: none;
+}
