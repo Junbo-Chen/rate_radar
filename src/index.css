@@ -52,6 +52,10 @@
 
     --series: #3b82f6;
 
+  /* Het kalendericoon van <input type="date"> is een zwarte bitmap; omkeren
+     maakt hem zichtbaar op een donkere ondergrond. */
+  --calendar-icon-filter: invert(0.85);
+
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 4px 16px rgba(0, 0, 0, 0.35);
     --shadow-hover: 0 2px 4px rgba(0, 0, 0, 0.5), 0 8px 28px rgba(0, 0, 0, 0.45);
   }
@@ -75,6 +79,10 @@
   --border-strong: rgba(255, 255, 255, 0.14);
 
   --series: #3b82f6;
+
+  /* Het kalendericoon van <input type="date"> is een zwarte bitmap; omkeren
+     maakt hem zichtbaar op een donkere ondergrond. */
+  --calendar-icon-filter: invert(0.85);
 
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 4px 16px rgba(0, 0, 0, 0.35);
   --shadow-hover: 0 2px 4px rgba(0, 0, 0, 0.5), 0 8px 28px rgba(0, 0, 0, 0.45);

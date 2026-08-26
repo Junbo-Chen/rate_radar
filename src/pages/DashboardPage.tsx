@@ -7,6 +7,7 @@ import { LimitChart, type ChartPoint } from '../components/LimitChart'
 import { LimitTile } from '../components/LimitTile'
 import { StatusBadge } from '../components/StatusBadge'
 import { RANGES, Toolbar, type RangeId } from '../components/Toolbar'
+import { useCredentials } from '../hooks/useCredentials'
 import { useRateLimits } from '../hooks/useRateLimits'
 import { useTimezone, type TimeZoneMode } from '../hooks/useTimezone'
 import { formatRelative, formatTimeExact, zoneCaption } from '../lib/format'
@@ -160,12 +161,22 @@ interface Props {
 export function DashboardPage({ source, onSourceChange }: Props) {
   const [range, setRange] = useState<RangeId>('all')
   const [autoRefresh, setAutoRefresh] = useState(false)
+  const [storeId, setStoreId] = useState('')
   const { mode: zone } = useTimezone()
+
+  // De keuzelijst komt uit de opgeslagen credentials: dat zijn precies de
+  // webshops waarvoor de back-end limieten kán ophalen.
+  const { items: credentials } = useCredentials(source === 'live')
+  const stores = useMemo(
+    () => [...new Set(credentials.map((row) => row.store_id))].sort(),
+    [credentials],
+  )
 
   const { measurements, isInitialLoading, isRefreshing, error, lastUpdated, refresh } =
     useRateLimits({
       source,
       pollInterval: autoRefresh ? POLL_INTERVAL_MS : null,
+      storeId,
     })
 
   const visible = useMemo(() => withinRange(measurements, range), [measurements, range])
@@ -209,6 +220,9 @@ export function DashboardPage({ source, onSourceChange }: Props) {
         onAutoRefreshChange={setAutoRefresh}
         onRefresh={refresh}
         isRefreshing={isRefreshing}
+        stores={stores}
+        storeId={storeId}
+        onStoreChange={setStoreId}
       />
 
       <p className="app__meta">

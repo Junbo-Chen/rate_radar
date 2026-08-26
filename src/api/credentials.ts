@@ -16,6 +16,12 @@ export interface Credential {
   /** Laatste vier tekens van het secret. Nooit de volledige waarde. */
   api_secret_last4: string
   created_at: string
+  /**
+   * Aantal 429's dat voor deze webshop is gelogd. Optioneel: alleen de back-end
+   * kan dit per store weten, want de metingen zelf dragen geen store_id.
+   * Ontbreekt het, dan valt de UI terug op een telling over de geladen metingen.
+   */
+  hits_429?: number
 }
 
 /** Wat de UI verstuurt bij aanmaken of bijwerken. */

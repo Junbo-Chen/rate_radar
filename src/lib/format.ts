@@ -24,6 +24,40 @@ function timeFormatter(mode: TimeZoneMode, withSeconds: boolean) {
 export const formatTime = (iso: string, mode: TimeZoneMode) =>
   timeFormatter(mode, false).format(new Date(iso));
 
+/**
+ * Sleutel van de kalenderdag waarin dit tijdstip valt, in de getoonde zone.
+ * Vorm `2026-08-26`, zodat sorteren op tekst gelijk is aan sorteren op tijd.
+ */
+export function dayKey(iso: string, mode: TimeZoneMode): string {
+  const date = new Date(iso);
+  if (mode === "utc") return date.toISOString().slice(0, 10);
+
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${date.getFullYear()}-${month}-${day}`;
+}
+
+/**
+ * "wo 26 aug" uit een sleutel als `2026-08-26`.
+ *
+ * De sleutel wordt als middag gelezen, niet als middernacht: dat voorkomt dat
+ * een zone-omrekening hem net over de grens naar de vorige of volgende dag tilt.
+ */
+export function formatDayKey(key: string, mode: TimeZoneMode): string {
+  const [year, month, day] = key.split("-").map(Number);
+  const at =
+    mode === "utc"
+      ? Date.UTC(year, month - 1, day, 12)
+      : new Date(year, month - 1, day, 12).getTime();
+
+  return new Intl.DateTimeFormat("nl-NL", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    timeZone: zoneOf(mode),
+  }).format(at);
+}
+
 /** Dag + maand, voor assen die meer dan een etmaal beslaan — daar is een
  *  kloktijd dubbelzinnig omdat elk uur zich herhaalt. */
 export const formatDay = (iso: string, mode: TimeZoneMode) =>

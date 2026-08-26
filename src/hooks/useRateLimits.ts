@@ -5,6 +5,8 @@ import type { Measurement } from "../api/contract";
 interface Options {
   source: SourceKind;
   pollInterval: number | null;
+  /** Leeg of weggelaten betekent: alle webshops. */
+  storeId?: string;
 }
 
 interface State {
@@ -16,7 +18,7 @@ interface State {
   refresh: () => void;
 }
 
-export function useRateLimits({ source, pollInterval }: Options): State {
+export function useRateLimits({ source, pollInterval, storeId }: Options): State {
   const [measurements, setMeasurements] = useState<Measurement[]>([]);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -26,14 +28,17 @@ export function useRateLimits({ source, pollInterval }: Options): State {
   const [refreshToken, setRefreshToken] = useState(0);
   const refresh = useCallback(() => setRefreshToken((token) => token + 1), []);
 
-  const hasLoadedSource = useRef<SourceKind | null>(null);
+  // Bron én webshop samen: wisselt er één, dan is dat een nieuwe selectie en
+  // hoort er een echte laadstatus bij in plaats van een stille verversing.
+  const selection = `${source}|${storeId ?? ""}`;
+  const hasLoadedSource = useRef<string | null>(null);
 
   useEffect(() => {
     const controller = new AbortController();
     let cancelled = false;
 
     const load = async () => {
-      const isFirstLoadForSource = hasLoadedSource.current !== source;
+      const isFirstLoadForSource = hasLoadedSource.current !== selection;
       if (isFirstLoadForSource) {
         setIsInitialLoading(true);
       } else {
@@ -41,12 +46,12 @@ export function useRateLimits({ source, pollInterval }: Options): State {
       }
 
       try {
-        const data = await fetchMeasurements(source, controller.signal);
+        const data = await fetchMeasurements(source, controller.signal, storeId);
         if (cancelled) return;
         setMeasurements(data);
         setError(null);
         setLastUpdated(Date.now());
-        hasLoadedSource.current = source;
+        hasLoadedSource.current = selection;
       } catch (cause) {
         if (cancelled || (cause instanceof DOMException && cause.name === "AbortError")) return;
         setError(cause instanceof Error ? cause.message : "Onbekende fout bij het ophalen.");
@@ -74,7 +79,7 @@ export function useRateLimits({ source, pollInterval }: Options): State {
       controller.abort();
       clearInterval(timer);
     };
-  }, [source, pollInterval, refreshToken]);
+  }, [source, pollInterval, refreshToken, storeId, selection]);
 
   return { measurements, isInitialLoading, isRefreshing, error, lastUpdated, refresh };
 }

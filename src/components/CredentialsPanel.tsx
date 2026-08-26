@@ -1,8 +1,10 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { maskKey, validate, type Credential, type CredentialInput } from '../api/credentials'
 import { useCredentials } from '../hooks/useCredentials'
+import { useRateLimits } from '../hooks/useRateLimits'
 import { useTimezone } from '../hooks/useTimezone'
-import { formatDateTime } from '../lib/format'
+import { dayKey, formatDateTime, formatDayKey } from '../lib/format'
+import { collectAlerts } from './AlertList'
 import { Modal } from './Modal'
 import { StatusBadge } from './StatusBadge'
 import './CredentialsPanel.css'
@@ -20,6 +22,57 @@ interface Props {
 export function CredentialsPanel({ useLive }: Props) {
   const { items, isLoading, isSaving, error, create, update, remove } = useCredentials(useLive)
   const { mode } = useTimezone()
+
+  // Terugval voor de 429-kolom. De metingen dragen geen store_id, dus dit is
+  // het totaal over de hele reeks — pas als de back-end `hits_429` per
+  // credential meestuurt, klopt het getal per webshop.
+  const { measurements } = useRateLimits({
+    source: useLive ? 'live' : 'mock',
+    pollInterval: null,
+  })
+  const totalHits = useMemo(() => collectAlerts(measurements).length, [measurements])
+
+  /**
+   * Eén emmer per kalenderdag in de reeks, nieuwste eerst. Ook dagen zonder
+   * 429 krijgen een emmer: "die dag was het rustig" is ook een antwoord.
+   */
+  const dayBuckets = useMemo(() => {
+    const buckets = new Map<string, { key: string; ms: number; hits: number }>()
+
+    for (const measurement of measurements) {
+      const key = dayKey(measurement.timestamp, mode)
+      if (!buckets.has(key)) {
+        buckets.set(key, { key, ms: Date.parse(measurement.timestamp), hits: 0 })
+      }
+    }
+
+    for (const alert of collectAlerts(measurements)) {
+      const bucket = buckets.get(dayKey(alert.iso, mode))
+      if (bucket) bucket.hits += 1
+    }
+
+    return [...buckets.values()].sort((a, b) => b.ms - a.ms)
+  }, [measurements, mode])
+
+  /** Lege string = alle dagen bij elkaar. */
+  const [day, setDay] = useState('')
+
+  // Uit de kalender kun je elke datum kiezen, ook een zonder metingen. Dat is
+  // geen fout: "0" en "niets gemeten" zijn alleen verschillende antwoorden, en
+  // die hieronder houden we uit elkaar.
+  const dayHasData = day === '' || dayBuckets.some((bucket) => bucket.key === day)
+
+  const hitsForSelection = day
+    ? (dayBuckets.find((bucket) => bucket.key === day)?.hits ?? 0)
+    : totalHits
+
+  // `hits_429` van de back-end is een totaal, dus dat geldt alleen wanneer er
+  // geen losse dag gekozen is.
+  const hitsFor = (row: Credential) => (day ? hitsForSelection : (row.hits_429 ?? totalHits))
+
+  // Grenzen van de kalender: buiten de reeks valt sowieso niets te tellen.
+  const firstDay = dayBuckets.at(-1)?.key
+  const lastDay = dayBuckets[0]?.key
 
   const [editing, setEditing] = useState<Editing>(null)
   const [form, setForm] = useState<CredentialInput>(EMPTY)
@@ -84,6 +137,40 @@ export function CredentialsPanel({ useLive }: Props) {
         </div>
       )}
 
+      {dayBuckets.length > 0 && items.length > 0 && (
+        <div className="creds__filter">
+          <label className="creds__filter-label" htmlFor="hits-day">
+            Rate limit hits op
+          </label>
+          <input
+            id="hits-day"
+            type="date"
+            className="select_webshop"
+            value={day}
+            min={firstDay}
+            max={lastDay}
+            onChange={(event) => setDay(event.target.value)}
+          />
+
+          {day ? (
+            <>
+              <span className="creds__filter-count">
+                {dayHasData
+                  ? `${formatDayKey(day, mode)} · ${hitsForSelection}×`
+                  : `${formatDayKey(day, mode)} · niets gemeten`}
+              </span>
+              <button type="button" className="button" onClick={() => setDay('')}>
+                Alle dagen
+              </button>
+            </>
+          ) : (
+            <span className="creds__filter-count">
+              alle dagen · {totalHits}× over {dayBuckets.length} dag(en)
+            </span>
+          )}
+        </div>
+      )}
+
       {isLoading ? (
         <p className="creds__empty">Laden…</p>
       ) : items.length === 0 ? (
@@ -96,6 +183,7 @@ export function CredentialsPanel({ useLive }: Props) {
                 <th scope="col">Store ID</th>
                 <th scope="col">API key</th>
                 <th scope="col">Secret</th>
+                <th scope="col">rate_limit hits</th>
                 <th scope="col">Toegevoegd</th>
                 <th scope="col">
                   <span className="creds__sr">Acties</span>
@@ -108,6 +196,13 @@ export function CredentialsPanel({ useLive }: Props) {
                   <th scope="row">{row.store_id}</th>
                   <td className="creds__mono">{maskKey(row.api_key)}</td>
                   <td className="creds__mono">••••{row.api_secret_last4}</td>
+                  <td>
+                    {hitsFor(row) > 0 ? (
+                      <StatusBadge status="critical" size="sm" label={`${hitsFor(row)}×`} />
+                    ) : (
+                      <span className="creds__zero">0</span>
+                    )}
+                  </td>
                   <td>{formatDateTime(row.created_at, mode)}</td>
                   <td className="creds__row-actions">
                     {pendingDelete === row.id ? (

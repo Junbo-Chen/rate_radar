@@ -6,15 +6,26 @@ export const MOCK_URL = "/mock/rate-limits.json";
 
 export const LIVE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000/api/rate-limits";
 
-export function sourceUrl(kind: SourceKind): string {
-  return kind === "mock" ? MOCK_URL : LIVE_URL;
+/**
+ * De gekozen webshop gaat als `store_id` mee naar de back-end. Het mockbestand
+ * is één vaste reeks zonder store-dimensie, dus daar valt niets te filteren.
+ */
+export function sourceUrl(kind: SourceKind, storeId?: string): string {
+  if (kind === "mock") return MOCK_URL;
+  if (!storeId) return LIVE_URL;
+
+  // Tweede argument vangt een relatieve VITE_API_URL op; zonder dat gooit URL().
+  const url = new URL(LIVE_URL, window.location.origin);
+  url.searchParams.set("store_id", storeId);
+  return url.toString();
 }
 
 export async function fetchMeasurements(
   kind: SourceKind,
   signal?: AbortSignal,
+  storeId?: string,
 ): Promise<Measurement[]> {
-  const url = sourceUrl(kind);
+  const url = sourceUrl(kind, storeId);
 
   let response: Response;
   try {

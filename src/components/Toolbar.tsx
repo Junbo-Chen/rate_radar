@@ -20,6 +20,11 @@ interface Props {
   onAutoRefreshChange: (enabled: boolean) => void
   onRefresh: () => void
   isRefreshing: boolean
+  /** Store IDs uit de opgeslagen credentials. */
+  stores: string[]
+  /** Lege string = alle webshops. */
+  storeId: string
+  onStoreChange: (storeId: string) => void
 }
 
 function SegmentedControl<T extends string>({
@@ -66,6 +71,9 @@ export function Toolbar({
   onAutoRefreshChange,
   onRefresh,
   isRefreshing,
+  stores,
+  storeId,
+  onStoreChange,
 }: Props) {
   return (
     <div className="toolbar">
@@ -78,6 +86,25 @@ export function Toolbar({
         value={source}
         onChange={onSourceChange}
       />
+
+      <div className="toolbar__group" role="group" aria-label="Webshop">
+        <label className="toolbar__legend" htmlFor="store-select">
+          Webshop
+        </label>
+        <select
+          id="store-select"
+          className="select_webshop"
+          value={storeId}
+          onChange={(event) => onStoreChange(event.target.value)}
+        >
+          <option value="">Alle webshops</option>
+          {stores.map((store) => (
+            <option key={store} value={store}>
+              Store {store}
+            </option>
+          ))}
+        </select>
+      </div>
 
       <SegmentedControl
         legend="Periode"
