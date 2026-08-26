@@ -104,10 +104,11 @@ body {
   margin: 0;
   background: var(--page);
   color: var(--text-primary);
-  font-family: var(--font-sans);
+  /* font-family: var(--font-sans); */
   font-size: 15px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  font-family: 'Poppins', sans-serif;
 }
 
 h1, h2, h3 {
