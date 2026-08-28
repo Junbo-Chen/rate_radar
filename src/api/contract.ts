@@ -26,7 +26,7 @@ export interface Measurement {
 }
 
 /**
- * De back-end mag de metingen kaal als array teruggeven (zoals de mockup),
+ * De back-end mag de metingen kaal als array teruggeven,
  * of ingepakt in een envelop. De client accepteert beide vormen.
  */
 export type MeasurementsResponse = Measurement[] | { data: Measurement[] }
@@ -56,6 +56,46 @@ function isLimitReading(value: unknown): value is LimitReading {
  * meteen wanneer Eric's endpoint een ander formaat teruggeeft, in plaats van
  * dat de grafiek stilletjes leeg blijft.
  */
+/**
+ * De vensternamen die Eric's Laravel-endpoint gebruikt, vertaald naar de onze.
+ * Lightspeed noemt ze zo in zijn `accountRatelimit`-respons.
+ */
+const LARAVEL_WINDOWS: Record<string, WindowKey> = {
+  limit5Min: '5min',
+  limitHour: '1hour',
+  limitDay: '24hour',
+}
+
+/**
+ * Vertaalt één momentopname van `GET /api/account/ratelimit` naar een meting.
+ *
+ * Dat endpoint geeft de húidige stand terug, geen reeks: één object met
+ * `limit5Min` / `limitHour` / `limitDay`. Levert het niet die drie vensters op,
+ * dan geven we null terug en valt de aanroeper terug op de foutmelding.
+ */
+function adaptSnapshot(payload: unknown): Measurement | null {
+  if (typeof payload !== 'object' || payload === null) return null
+
+  const record = payload as Record<string, unknown>
+  if (typeof record.timestamp !== 'string' || Number.isNaN(Date.parse(record.timestamp))) {
+    return null
+  }
+
+  const limits = record.limits
+  if (typeof limits !== 'object' || limits === null) return null
+
+  const source = limits as Record<string, unknown>
+  const mapped = {} as Record<WindowKey, LimitReading>
+
+  for (const [from, to] of Object.entries(LARAVEL_WINDOWS)) {
+    const reading = source[from]
+    if (!isLimitReading(reading)) return null
+    mapped[to] = { used: reading.used, limit: reading.limit, hit_429: reading.hit_429 }
+  }
+
+  return { timestamp: record.timestamp, limits: mapped }
+}
+
 export function parseMeasurements(payload: unknown): Measurement[] {
   const rows = Array.isArray(payload)
     ? payload
@@ -64,7 +104,14 @@ export function parseMeasurements(payload: unknown): Measurement[] {
       : null
 
   if (rows === null) {
-    throw new Error('Onverwacht formaat: verwacht een array met metingen, of { "data": [...] }.')
+    // Geen reeks: misschien één momentopname van de Laravel-kant.
+    const snapshot = adaptSnapshot(payload)
+    if (snapshot) return [snapshot]
+
+    throw new Error(
+      'Onverwacht formaat: verwacht een array met metingen, { "data": [...] }, ' +
+        'of één momentopname met limit5Min / limitHour / limitDay.',
+    )
   }
 
   const parsed = rows.map((row, index) => {

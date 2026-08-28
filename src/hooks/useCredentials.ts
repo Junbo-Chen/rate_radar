@@ -1,19 +1,19 @@
 import { useCallback, useEffect, useState } from 'react'
-import { driverFor, type Credential, type CredentialInput } from '../api/credentials'
+import { credentialsDriver, type Credential, type CredentialInput } from '../api/credentials'
 
-export function useCredentials(useLive: boolean) {
+export function useCredentials() {
   const [items, setItems] = useState<Credential[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const driver = driverFor(useLive)
+  const driver = credentialsDriver
 
   useEffect(() => {
     const controller = new AbortController()
     let cancelled = false
 
-    driverFor(useLive)
+    credentialsDriver
       .list(controller.signal)
       .then((rows) => {
         if (!cancelled) {
@@ -34,7 +34,7 @@ export function useCredentials(useLive: boolean) {
       cancelled = true
       controller.abort()
     }
-  }, [useLive])
+  }, [])
 
   /** Voert een schrijfactie uit en zet de lijst opnieuw. */
   const run = useCallback(async (action: () => Promise<void>) => {

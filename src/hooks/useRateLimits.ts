@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { fetchMeasurements, type SourceKind } from "../api/client";
+import { fetchMeasurements } from "../api/client";
 import type { Measurement } from "../api/contract";
 
 interface Options {
-  source: SourceKind;
   pollInterval: number | null;
   /** Leeg of weggelaten betekent: alle webshops. */
   storeId?: string;
@@ -18,7 +17,23 @@ interface State {
   refresh: () => void;
 }
 
-export function useRateLimits({ source, pollInterval, storeId }: Options): State {
+/** Zoveel metingen houden we vast: een week aan 5-minuten-slots. */
+const MAX_HISTORY = 2016;
+
+/**
+ * Voegt nieuwe metingen bij de bestaande, ontdubbeld op tijdstempel en
+ * oplopend gesorteerd. Dezelfde meting twee keer ophalen verandert dus niets.
+ */
+function mergeByTimestamp(current: Measurement[], incoming: Measurement[]): Measurement[] {
+  const byTimestamp = new Map(current.map((row) => [row.timestamp, row]));
+  for (const row of incoming) byTimestamp.set(row.timestamp, row);
+
+  return [...byTimestamp.values()]
+    .sort((a, b) => Date.parse(a.timestamp) - Date.parse(b.timestamp))
+    .slice(-MAX_HISTORY);
+}
+
+export function useRateLimits({ pollInterval, storeId }: Options): State {
   const [measurements, setMeasurements] = useState<Measurement[]>([]);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -28,9 +43,9 @@ export function useRateLimits({ source, pollInterval, storeId }: Options): State
   const [refreshToken, setRefreshToken] = useState(0);
   const refresh = useCallback(() => setRefreshToken((token) => token + 1), []);
 
-  // Bron én webshop samen: wisselt er één, dan is dat een nieuwe selectie en
-  // hoort er een echte laadstatus bij in plaats van een stille verversing.
-  const selection = `${source}|${storeId ?? ""}`;
+  // Wisselt de webshop, dan is dat een nieuwe selectie en hoort er een echte
+  // laadstatus bij in plaats van een stille verversing.
+  const selection = storeId ?? "";
   const hasLoadedSource = useRef<string | null>(null);
 
   useEffect(() => {
@@ -46,9 +61,15 @@ export function useRateLimits({ source, pollInterval, storeId }: Options): State
       }
 
       try {
-        const data = await fetchMeasurements(source, controller.signal, storeId);
+        const data = await fetchMeasurements(controller.signal, storeId);
         if (cancelled) return;
-        setMeasurements(data);
+
+        // De API geeft één momentopname per aanroep, geen geschiedenis. Die
+        // stapelen we hier op, zodat de grafieken zich vullen zolang de pagina
+        // open staat.
+        setMeasurements((current) =>
+          isFirstLoadForSource ? data : mergeByTimestamp(current, data),
+        );
         setError(null);
         setLastUpdated(Date.now());
         hasLoadedSource.current = selection;
@@ -79,7 +100,7 @@ export function useRateLimits({ source, pollInterval, storeId }: Options): State
       controller.abort();
       clearInterval(timer);
     };
-  }, [source, pollInterval, refreshToken, storeId, selection]);
+  }, [pollInterval, refreshToken, storeId, selection]);
 
   return { measurements, isInitialLoading, isRefreshing, error, lastUpdated, refresh };
 }

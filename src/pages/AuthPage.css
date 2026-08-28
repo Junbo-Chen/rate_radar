@@ -1,0 +1,114 @@
+.auth {
+  max-width: 26rem;
+  width:100%;
+  margin: 3rem auto;
+  padding: 2rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.auth__title {
+  margin: 0 0 0.35rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.auth__intro {
+  margin: 0 0 1.5rem;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
+.auth__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+}
+
+.auth__label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+.auth__input {
+  padding: 0.55rem 0.7rem;
+  font: inherit;
+  font-size: 0.9375rem;
+  color: var(--text-primary);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+}
+
+.auth__input:focus-visible {
+  outline: 2px solid var(--series);
+  outline-offset: 1px;
+}
+
+.auth__input[aria-invalid='true'] {
+  border-color: var(--status-critical);
+}
+
+/* De melding hoort bij het veld erboven, niet bij het formulier als geheel. */
+.auth__field-error {
+  font-size: 0.8125rem;
+  color: var(--status-critical);
+}
+
+.auth__remember {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-bottom: 1.25rem;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.auth__submit {
+  width: 100%;
+  padding: 0.6rem 1rem;
+  font: inherit;
+  font-weight: 500;
+  color: var(--page);
+  background: var(--text-primary);
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.auth__submit:hover:not(:disabled) {
+  background: var(--text-secondary);
+}
+
+.auth__submit:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.auth__error {
+  margin: 0 0 1rem;
+  padding: 0.7rem 0.85rem;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--status-critical);
+  background: color-mix(in srgb, var(--status-critical) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--status-critical) 25%, transparent);
+  border-radius: var(--radius-sm);
+}
+
+.auth__switch {
+  margin: 1.25rem 0 0;
+  font-size: 0.875rem;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.auth__switch a {
+  color: var(--series);
+}

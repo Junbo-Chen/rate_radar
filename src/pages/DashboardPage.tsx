@@ -1,16 +1,18 @@
-import { useMemo, useState } from 'react'
-import { LIVE_URL, MOCK_URL, type SourceKind } from '../api/client'
-import { WINDOW_KEYS, type Measurement, type WindowKey } from '../api/contract'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { LIVE_URL } from '../api/client'
+import { windowLabel, WINDOW_KEYS, type Measurement, type WindowKey } from '../api/contract'
 import { AlertList, collectAlerts } from '../components/AlertList'
 import { DataTable } from '../components/DataTable'
 import { LimitChart, type ChartPoint } from '../components/LimitChart'
 import { LimitTile } from '../components/LimitTile'
 import { StatusBadge } from '../components/StatusBadge'
+import { ToastStack } from '../components/ToastStack'
 import { RANGES, Toolbar, type RangeId } from '../components/Toolbar'
+import { useToasts } from '../hooks/useToasts'
 import { useCredentials } from '../hooks/useCredentials'
 import { useRateLimits } from '../hooks/useRateLimits'
 import { useTimezone, type TimeZoneMode } from '../hooks/useTimezone'
-import { formatRelative, formatTimeExact, zoneCaption } from '../lib/format'
+import { formatNumber, formatRelative, formatTimeExact, zoneCaption } from '../lib/format'
 import { statusOf, worstStatus } from '../lib/status'
 
 const POLL_INTERVAL_MS = 60_000
@@ -113,8 +115,9 @@ const FIVE_MIN_MS = 5 * 60 * 1000
 
 /**
  * Vult de volle terugblik met 5-minuten-slots en zet elk slot waarvoor geen
- * meting bestaat op 0. Zonder dit krimpt de as tot de paar uur die de mockup
- * bevat en toont een "laatste 7 dagen"-grafiek in werkelijkheid een halve dag.
+ * meting bestaat op 0. Zonder dit krimpt de as tot wat er tot nu toe opgehaald is
+ * de app tot nu toe heeft opgehaald, en toont een "laatste 7 dagen"-grafiek
+ * in werkelijkheid een paar minuten.
  *
  * Let op bij het lezen: een 0 betekent hier "niet gemeten", niet "nul calls".
  * Zodra de back-end echte historie levert vullen die slots zich vanzelf.
@@ -153,12 +156,7 @@ function paddedChartPoints(
   return points
 }
 
-interface Props {
-  source: SourceKind
-  onSourceChange: (source: SourceKind) => void
-}
-
-export function DashboardPage({ source, onSourceChange }: Props) {
+export function DashboardPage() {
   const [range, setRange] = useState<RangeId>('all')
   const [autoRefresh, setAutoRefresh] = useState(false)
   const [storeId, setStoreId] = useState('')
@@ -166,7 +164,7 @@ export function DashboardPage({ source, onSourceChange }: Props) {
 
   // De keuzelijst komt uit de opgeslagen credentials: dat zijn precies de
   // webshops waarvoor de back-end limieten kán ophalen.
-  const { items: credentials } = useCredentials(source === 'live')
+  const { items: credentials } = useCredentials()
   const stores = useMemo(
     () => [...new Set(credentials.map((row) => row.store_id))].sort(),
     [credentials],
@@ -174,7 +172,6 @@ export function DashboardPage({ source, onSourceChange }: Props) {
 
   const { measurements, isInitialLoading, isRefreshing, error, lastUpdated, refresh } =
     useRateLimits({
-      source,
       pollInterval: autoRefresh ? POLL_INTERVAL_MS : null,
       storeId,
     })
@@ -209,11 +206,54 @@ export function DashboardPage({ source, onSourceChange }: Props) {
     ? worstStatus(WINDOW_KEYS.map((key) => statusOf(latest.limits[key])))
     : null
 
+  const { toasts, push, dismiss } = useToasts()
+
+  /**
+   * Meldt alleen 429's die er de vorige keer nog niet waren.
+   *
+   * Twee valkuilen die dit vermijdt. Bij de eerste lading staan er al 429's in
+   * de reeks; die zijn niet nieuw, dus daar ijken we alleen op. En wisselt de
+   * selectie (bron, webshop, periode), dan verandert de hele lijst in één keer —
+   * ook dat is geen nieuws, dus dan ijken we opnieuw in plaats van te melden.
+   */
+  const selectionKey = `${storeId}|${range}`
+  const seen = useRef<{ key: string; ids: Set<string> } | null>(null)
+
+  useEffect(() => {
+    // Nog niets binnen: hier valt niets te ijken en niets te melden.
+    if (isInitialLoading) return
+
+    const idOf = (alert: { iso: string; windowKey: WindowKey }) =>
+      `${alert.iso}|${alert.windowKey}`
+
+    const previous = seen.current
+    const isNewSelection = !previous || previous.key !== selectionKey
+
+    // Wacht met de eerste ijking tot er echt metingen zijn. Ijken op een lege
+    // lijst maakt van elke bestaande 429 "nieuws" zodra de fetch binnenkomt —
+    // precies wat er gebeurde bij het terugkeren van een andere pagina.
+    if (isNewSelection && measurements.length === 0) return
+
+    const ids = new Set(alerts.map(idOf))
+    seen.current = { key: selectionKey, ids }
+
+    if (isNewSelection) return
+
+    for (const alert of alerts.filter((candidate) => !previous!.ids.has(idOf(candidate)))) {
+      push({
+        status: 'critical',
+        title: `${windowLabel(alert.windowKey)}-limiet geraakt`,
+        body: `${storeId ? `Store ${storeId}` : 'Webshop'} kreeg een 429 om ${formatTimeExact(
+          alert.iso,
+          zone,
+        )} — ${formatNumber(alert.used)} van ${formatNumber(alert.limit)} calls.`,
+      })
+    }
+  }, [alerts, selectionKey, push, storeId, zone, isInitialLoading, measurements.length])
+
   return (
     <>
       <Toolbar
-        source={source}
-        onSourceChange={onSourceChange}
         range={range}
         onRangeChange={setRange}
         autoRefresh={autoRefresh}
@@ -232,7 +272,7 @@ export function DashboardPage({ source, onSourceChange }: Props) {
             {' · '}
           </>
         )}
-        Bron: <code>{source === 'mock' ? MOCK_URL : LIVE_URL}</code>
+        Bron: <code>{LIVE_URL}</code>
         {latest && (
           <>
             {' '}
@@ -252,12 +292,10 @@ export function DashboardPage({ source, onSourceChange }: Props) {
         <div className="app__error" role="alert">
           <StatusBadge status="critical" size="sm" label="Ophalen mislukt" />
           <p>{error}</p>
-          {source === 'live' && (
-            <p className="app__error-hint">
-              Stel het endpoint in via <code>VITE_API_URL</code> in <code>.env</code>, of schakel
-              terug naar de mockup zolang de back-end nog niet draait.
-            </p>
-          )}
+          <p className="app__error-hint">
+            Draait <code>php artisan serve</code>? Het endpoint is instelbaar via{' '}
+            <code>VITE_API_URL</code> in <code>.env</code>.
+          </p>
         </div>
       )}
 
@@ -305,6 +343,8 @@ export function DashboardPage({ source, onSourceChange }: Props) {
           <DataTable measurements={visible} />
         </div>
       )}
+
+      <ToastStack toasts={toasts} onDismiss={dismiss} />
     </>
   )
 }

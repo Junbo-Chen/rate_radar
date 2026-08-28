@@ -1,8 +1,7 @@
-import type { SourceKind } from '../api/client'
 import './Toolbar.css'
 
-/** Periodes zijn relatief aan de laatste meting, niet aan de wandklok — de
- *  mockup speelt zich in het verleden af en zou anders leeg filteren. */
+/** Periodes zijn relatief aan de laatste meting, niet aan de wandklok, zodat
+ *  een haperende back-end geen lege selectie oplevert. */
 export const RANGES = [
   { id: 'all', label: 'Alles' },
   { id: '4h', label: 'Laatste 4 uur', minutes: 240 },
@@ -12,8 +11,6 @@ export const RANGES = [
 export type RangeId = (typeof RANGES)[number]['id']
 
 interface Props {
-  source: SourceKind
-  onSourceChange: (source: SourceKind) => void
   range: RangeId
   onRangeChange: (range: RangeId) => void
   autoRefresh: boolean
@@ -63,8 +60,6 @@ function SegmentedControl<T extends string>({
  * dezelfde selectie, in plaats van elk hun eigen filtertje te krijgen.
  */
 export function Toolbar({
-  source,
-  onSourceChange,
   range,
   onRangeChange,
   autoRefresh,
@@ -77,15 +72,6 @@ export function Toolbar({
 }: Props) {
   return (
     <div className="toolbar">
-      <SegmentedControl
-        legend="Databron"
-        options={[
-          { id: 'mock', label: 'Mockup' },
-          { id: 'live', label: 'Live API' },
-        ]}
-        value={source}
-        onChange={onSourceChange}
-      />
 
       <div className="toolbar__group" role="group" aria-label="Webshop">
         <label className="toolbar__legend" htmlFor="store-select">

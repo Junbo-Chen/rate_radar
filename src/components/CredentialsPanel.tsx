@@ -14,22 +14,14 @@ const EMPTY: CredentialInput = { store_id: '', api_key: '', api_secret: '' }
 /** Wat de popup toont: niets, een nieuwe rij, of een bestaande rij. */
 type Editing = { mode: 'new' } | { mode: 'edit'; row: Credential } | null
 
-interface Props {
-  /** Praat met Eric's endpoint in plaats van de lokale stub. */
-  useLive: boolean
-}
-
-export function CredentialsPanel({ useLive }: Props) {
-  const { items, isLoading, isSaving, error, create, update, remove } = useCredentials(useLive)
+export function CredentialsPanel() {
+  const { items, isLoading, isSaving, error, create, update, remove } = useCredentials()
   const { mode } = useTimezone()
 
   // Terugval voor de 429-kolom. De metingen dragen geen store_id, dus dit is
   // het totaal over de hele reeks — pas als de back-end `hits_429` per
   // credential meestuurt, klopt het getal per webshop.
-  const { measurements } = useRateLimits({
-    source: useLive ? 'live' : 'mock',
-    pollInterval: null,
-  })
+  const { measurements } = useRateLimits({ pollInterval: null })
   const totalHits = useMemo(() => collectAlerts(measurements).length, [measurements])
 
   /**
@@ -133,7 +125,15 @@ export function CredentialsPanel({ useLive }: Props) {
       {error && (
         <div className="creds__error" role="alert">
           <StatusBadge status="critical" size="sm" label="Mislukt" />
-          <span>{error}</span>
+          <div>
+            <p>{error}</p>
+            <p className="creds__error-hint">
+              Credentials worden alleen door de back-end bewaard. De Laravel-app heeft nog geen
+              routes naar <code>ApiCredentialsController</code> — vraag Eric om{' '}
+              <code>Route::apiResource('credentials', ...)</code> in <code>routes/api.php</code>,
+              met JSON in plaats van Blade-views.
+            </p>
+          </div>
         </div>
       )}
 

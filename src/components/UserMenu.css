@@ -1,0 +1,128 @@
+.user-menu {
+  position: relative;
+}
+
+.user-menu__trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 34px;
+  block-size: 34px;
+  padding: 0;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  color: var(--text-secondary);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+.user-menu__trigger:hover,
+.user-menu__trigger[aria-expanded='true'] {
+  color: var(--text-primary);
+  background: var(--surface-hover);
+  border-color: var(--text-muted);
+}
+
+.user-menu__trigger:focus-visible {
+  outline: 2px solid var(--series);
+  outline-offset: 2px;
+}
+
+.user-menu__panel {
+  position: absolute;
+  inset-block-start: calc(100% + 8px);
+  inset-inline-end: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-inline-size: 15rem;
+  padding: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-hover);
+  animation: user-menu-in 130ms ease;
+}
+
+@keyframes user-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .user-menu__panel {
+    animation: none;
+  }
+}
+
+.user-menu__identity {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 8px 10px 10px;
+  border-block-end: 1px solid var(--border);
+  margin-block-end: 2px;
+}
+
+.user-menu__name {
+  font-size: 13.5px;
+  font-weight: 650;
+  color: var(--text-primary);
+}
+
+/* Breekt af in plaats van het menu breder te maken bij een lang adres. */
+.user-menu__email {
+  font-size: 12px;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+/* De thema-knop komt uit de header en is daar een losstaande pil. Binnen het
+   menu hoort hij als volle regel te lezen, net als Uitloggen eronder. */
+.user-menu__row .theme-toggle {
+  inline-size: 100%;
+  justify-content: flex-start;
+  padding: 8px 10px;
+  font-weight: 500;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+}
+
+.user-menu__row .theme-toggle:hover {
+  background: var(--surface-hover);
+  border-color: transparent;
+}
+
+.user-menu__signout {
+  padding: 8px 10px;
+  font: inherit;
+  font-size: 13.5px;
+  text-align: start;
+  color: var(--status-critical);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+
+.user-menu__signout:hover {
+  background: color-mix(in srgb, var(--status-critical) 10%, transparent);
+}
+
+.user-menu__signout:focus-visible {
+  outline: 2px solid var(--series);
+  outline-offset: -2px;
+}

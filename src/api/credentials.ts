@@ -8,6 +8,8 @@
  * het scheelt Eric een hoop kopzorgen bij het inleveren.
  */
 
+import { apiFetch, readJson } from './http'
+
 export interface Credential {
   id: string
   store_id: string
@@ -70,31 +72,14 @@ export interface CredentialsDriver {
  * ------------------------------------------------------------------ */
 
 async function request<T>(url: string, init?: RequestInit): Promise<T> {
-  let response: Response
-  try {
-    response = await fetch(url, {
-      ...init,
-      headers: { Accept: 'application/json', 'Content-Type': 'application/json', ...init?.headers },
-    })
-  } catch (cause) {
-    if (cause instanceof DOMException && cause.name === 'AbortError') throw cause
-    throw new Error(`Geen verbinding met ${url}. Draait de Laravel-server al?`)
-  }
+  // apiFetch regelt het sessiecookie en het CSRF-token; readJson vertaalt
+  // Laravel's { message, errors } naar een bruikbare exceptie.
+  const response = await apiFetch(url, {
+    ...init,
+    headers: { 'Content-Type': 'application/json', ...init?.headers },
+  })
 
-  if (response.status === 204) return undefined as T
-  if (!response.ok) {
-    // Laravel geeft validatiefouten als { message, errors }.
-    const problem = await response.json().catch(() => null)
-    const message =
-      problem && typeof problem.message === 'string'
-        ? problem.message
-        : `${url} gaf HTTP ${response.status} ${response.statusText}.`
-    throw new Error(message)
-  }
-
-  const body = await response.json()
-  // Laravel's resources verpakken standaard in { data: ... }.
-  return (body && typeof body === 'object' && 'data' in body ? body.data : body) as T
+  return readJson<T>(response, url)
 }
 
 export const httpDriver: CredentialsDriver = {
@@ -110,76 +95,23 @@ export const httpDriver: CredentialsDriver = {
     request<void>(`${CREDENTIALS_URL}/${encodeURIComponent(id)}`, { method: 'DELETE' }),
 }
 
-/* ------------------------------------------------------------------ *
- * Lokaal: een stub zolang de back-end er nog niet is
- * ------------------------------------------------------------------ */
-
-const STORAGE_KEY = 'rateradar:credentials'
+/**
+ * Credentials worden uitsluitend door de back-end bewaard.
+ *
+ * Er stond hier eerder een lokale variant die in localStorage schreef. Die is
+ * verwijderd: localStorage is geen kluis — alles wat daar staat is leesbaar
+ * voor elk script op deze origin, en een API-sleutel hoort daar niet thuis.
+ */
+export const credentialsDriver: CredentialsDriver = httpDriver
 
 /**
- * Bewaart bewust alléén de hint van het secret, niet het secret zelf.
- * localStorage is geen kluis: alles wat daar staat is leesbaar voor elk script
- * op deze origin. De volledige waarde hoort in Eric's versleutelde kolom.
+ * Ruimt de sleutel op die de oude lokale opslag achterliet, zodat er niets
+ * blijft rondslingeren in de browsers waar dit al gedraaid heeft.
  */
-function read(): Credential[] {
+export function purgeLegacyLocalCredentials() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    const parsed = raw ? JSON.parse(raw) : []
-    return Array.isArray(parsed) ? parsed : []
+    localStorage.removeItem('rateradar:credentials')
   } catch {
-    return []
+    // Geblokkeerde opslag: dan valt er ook niets op te ruimen.
   }
-}
-
-function write(rows: Credential[]) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(rows))
-  } catch {
-    // Vol of geblokkeerd: de lijst blijft dan alleen in het geheugen staan.
-  }
-}
-
-export const localDriver: CredentialsDriver = {
-  async list() {
-    return read()
-  },
-
-  async create(input) {
-    const row: Credential = {
-      id: crypto.randomUUID(),
-      store_id: input.store_id.trim(),
-      api_key: input.api_key.trim(),
-      api_secret_last4: lastFour(input.api_secret.trim()),
-      created_at: new Date().toISOString(),
-    }
-    write([...read(), row])
-    return row
-  },
-
-  async update(id, input) {
-    const rows = read()
-    const index = rows.findIndex((row) => row.id === id)
-    if (index === -1) throw new Error('Deze credential bestaat niet meer.')
-
-    const updated: Credential = {
-      ...rows[index],
-      store_id: input.store_id.trim(),
-      api_key: input.api_key.trim(),
-      // Leeg secret bij bewerken = ongewijzigd laten.
-      api_secret_last4: input.api_secret.trim()
-        ? lastFour(input.api_secret.trim())
-        : rows[index].api_secret_last4,
-    }
-    rows[index] = updated
-    write(rows)
-    return updated
-  },
-
-  async remove(id) {
-    write(read().filter((row) => row.id !== id))
-  },
-}
-
-export function driverFor(useLive: boolean): CredentialsDriver {
-  return useLive ? httpDriver : localDriver
 }
