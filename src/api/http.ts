@@ -12,14 +12,38 @@ export const BACKEND_ORIGIN = deriveBackendOrigin()
 
 function deriveBackendOrigin(): string {
   const explicit = import.meta.env.VITE_BACKEND_URL
-  if (explicit) return explicit.replace(/\/+$/, '')
+  if (explicit) return matchPageProtocol(explicit.replace(/\/+$/, ''))
 
   // Anders: dezelfde server als waar de metingen vandaan komen.
   try {
-    return new URL(import.meta.env.VITE_API_URL ?? '', window.location.origin).origin
+    return matchPageProtocol(new URL(import.meta.env.VITE_API_URL ?? '', window.location.origin).origin)
   } catch {
     return 'http://localhost:8000'
   }
+}
+
+/**
+ * Trekt een http-adres omhoog naar https zodra de pagina zelf over https loopt.
+ *
+ * Zonder dit blokkeert de browser elke aanroep als "mixed content" en zie je
+ * alleen nog een lege pagina. Dat gebeurt zodra iemand bij het bouwen een
+ * VITE_-variabele met http:// meegeeft, en dat is precies het soort typefout
+ * dat pas na het deployen opvalt.
+ *
+ * In ontwikkeling draait de pagina zelf op http, dus daar verandert dit niets.
+ */
+function matchPageProtocol(origin: string): string {
+  if (window.location.protocol !== 'https:' || !origin.startsWith('http://')) {
+    return origin
+  }
+
+  const upgraded = `https://${origin.slice('http://'.length)}`
+  console.warn(
+    `RateRadar: de API stond ingesteld op ${origin}, maar deze pagina draait over https. ` +
+      `Er wordt ${upgraded} gebruikt. Zet het juiste adres in VITE_BACKEND_URL en bouw opnieuw.`,
+  )
+
+  return upgraded
 }
 
 /** Gegooid zodra Laravel zegt dat er geen geldige sessie (meer) is. */
