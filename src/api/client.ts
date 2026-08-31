@@ -4,21 +4,28 @@ import { apiFetch } from "./http";
 export const LIVE_URL =
   import.meta.env.VITE_API_URL ?? "http://localhost:8000/api/account/ratelimit";
 
-/** De gekozen webshop gaat als `store_id` mee naar de back-end. */
-export function sourceUrl(storeId?: string): string {
-  if (!storeId) return LIVE_URL;
+/**
+ * De gekozen webshop gaat als `store_id` mee naar de back-end, en `limit` zegt
+ * hoeveel metingen er terug hoeven. Dat laatste scheelt bij het vergelijken:
+ * vier webshops maal een week aan metingen is een hoop JSON voor een grafiek
+ * die maar een etmaal toont.
+ */
+export function sourceUrl(storeId?: string, limit?: number): string {
+  if (!storeId && !limit) return LIVE_URL;
 
   // Tweede argument vangt een relatieve VITE_API_URL op; zonder dat gooit URL().
   const url = new URL(LIVE_URL, window.location.origin);
-  url.searchParams.set("store_id", storeId);
+  if (storeId) url.searchParams.set("store_id", storeId);
+  if (limit) url.searchParams.set("limit", String(limit));
   return url.toString();
 }
 
 export async function fetchMeasurements(
   signal?: AbortSignal,
   storeId?: string,
+  limit?: number,
 ): Promise<Measurement[]> {
-  const url = sourceUrl(storeId);
+  const url = sourceUrl(storeId, limit);
 
   // apiFetch stuurt het sessiecookie mee en vertaalt een 401 naar uitloggen.
   const response = await apiFetch(url, { signal });

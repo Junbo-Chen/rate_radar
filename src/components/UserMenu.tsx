@@ -1,5 +1,6 @@
-import { useEffect, useId, useRef, useState } from 'react'
+import { useCallback, useId, useRef, useState } from 'react'
 import type { User } from '../api/auth'
+import { useDismissable } from '../hooks/useDismissable'
 import { ThemeToggle } from './ThemeToggle'
 import './UserMenu.css'
 
@@ -25,30 +26,10 @@ export function UserMenu({ user, onSignOut }: Props) {
   const triggerRef = useRef<HTMLButtonElement>(null)
   const panelId = useId()
 
-  // Klikken buiten het menu sluit het, net als bij elk ander uitklapmenu.
-  // Escape doet hetzelfde en zet de focus terug op de knop, zodat je niet
-  // met de tab-toets hoeft te zoeken waar je gebleven was.
-  useEffect(() => {
-    if (!isOpen) return
-
-    const onPointerDown = (event: PointerEvent) => {
-      if (!containerRef.current?.contains(event.target as Node)) setIsOpen(false)
-    }
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Escape') return
-      setIsOpen(false)
-      triggerRef.current?.focus()
-    }
-
-    document.addEventListener('pointerdown', onPointerDown)
-    document.addEventListener('keydown', onKeyDown)
-
-    return () => {
-      document.removeEventListener('pointerdown', onPointerDown)
-      document.removeEventListener('keydown', onKeyDown)
-    }
-  }, [isOpen])
+  // Klikken buiten het menu sluit het, en Escape doet hetzelfde. De Toolbar
+  // gebruikt dezelfde hook, zodat beide panelen zich gelijk blijven gedragen.
+  const close = useCallback(() => setIsOpen(false), [])
+  useDismissable({ isOpen, onDismiss: close, containerRef, triggerRef })
 
   return (
     <div className="user-menu" ref={containerRef}>

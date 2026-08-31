@@ -31,7 +31,7 @@
   list-style: none;
   display: flex;
   flex-direction: column;
-  max-block-size: 260px;
+  max-block-size: 300px;
   overflow-y: auto;
 }
 

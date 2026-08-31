@@ -10,17 +10,36 @@
   box-shadow: var(--shadow);
 }
 
+/* Links wat je kiest, rechts wat je doet. De tussenruimte groeit mee, dus de
+   knoppen blijven op hun plek als er een webshop bij komt. */
+.toolbar__filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 14px 28px;
+}
+
+.toolbar__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-inline-start: auto;
+}
+
+/* Op een smal scherm valt de knoppenrij onder de filters. Zonder dit blijft
+   `margin-inline-start: auto` hem naar rechts duwen en staat hij daar los. */
+@media (max-width: 640px) {
+  .toolbar__actions {
+    margin-inline-start: 0;
+    inline-size: 100%;
+  }
+}
+
 .toolbar__group {
   display: flex;
   flex-direction: column;
   gap: 6px;
-}
-
-.toolbar__group--end {
-  flex-direction: row;
-  align-items: center;
-  gap: 16px;
-  margin-inline-start: auto;
 }
 
 .toolbar__legend {
@@ -63,8 +82,8 @@
   box-shadow: 0 1px 3px rgba(12, 12, 11, 0.1);
 }
 
-.select {
-  padding: 6px 12px;
+.toolbar__select {
+  padding: 8px 12px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--surface-sunken);
@@ -76,24 +95,13 @@
   min-inline-size: 160px;
 }
 
-.select:hover {
+.toolbar__select:hover {
   border-color: var(--text-muted);
 }
 
-.toolbar__switch {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13.5px;
-  color: var(--text-secondary);
-  cursor: pointer;
-}
-
-.toolbar__switch input {
-  inline-size: 16px;
-  block-size: 16px;
-  accent-color: var(--series);
-  cursor: pointer;
+.toolbar__select:focus-visible {
+  outline: 2px solid var(--series);
+  outline-offset: 2px;
 }
 
 .button {
@@ -101,6 +109,8 @@
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
   background: var(--surface);
+  color: var(--text-primary);
+  font: inherit;
   font-size: 13.5px;
   font-weight: 650;
   cursor: pointer;
@@ -121,8 +131,130 @@
   cursor: default;
 }
 
-.select_webshop{
-  padding: 9.5px 8px;
+.button:focus-visible {
+  outline: 2px solid var(--series);
+  outline-offset: 2px;
+}
+
+/* Verversen is de handeling waar je voor komt; die mag eruit springen. In
+   donkere modus keert het contrast vanzelf om, want beide tokens wisselen mee. */
+.button--primary {
+  background: var(--text-primary);
+  border-color: var(--text-primary);
+  color: var(--page);
+}
+
+.button--primary:hover:not(:disabled) {
+  background: var(--text-secondary);
+  border-color: var(--text-secondary);
+}
+
+.toolbar__menu {
+  position: relative;
+}
+
+/* Stipje zodra er iets aanstaat, zodat je het paneel niet hoeft te openen om
+   te zien of verversen of meldingen actief zijn. */
+.toolbar__menu-trigger[data-active]::after {
+  content: '';
+  display: inline-block;
+  inline-size: 6px;
+  block-size: 6px;
+  margin-inline-start: 7px;
+  vertical-align: middle;
+  border-radius: 50%;
+  background: var(--series);
+}
+
+.toolbar__panel {
+  position: absolute;
+  inset-block-start: calc(100% + 8px);
+  inset-inline-end: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-inline-size: 15rem;
+  padding: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-hover);
+  animation: toolbar-panel-in 130ms ease;
+}
+
+@keyframes toolbar-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toolbar__panel {
+    animation: none;
+  }
+}
+
+.toolbar__switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+/* Binnen het paneel leest elke schakelaar als volle regel, net als in het
+   accountmenu. */
+.toolbar__panel .toolbar__switch {
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+}
+
+.toolbar__panel .toolbar__switch:hover {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+
+.toolbar__switch input {
+  inline-size: 16px;
+  block-size: 16px;
+  accent-color: var(--series);
+  cursor: pointer;
+}
+
+/* Meldingen geweigerd in de browser: zichtbaar op slot, met uitleg eronder.
+   Weghalen zou de vraag oproepen waar de schakelaar heen is. */
+.toolbar__switch[data-disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.toolbar__switch[data-disabled] input {
+  cursor: not-allowed;
+}
+
+.toolbar__panel-note {
+  margin: 2px 0 0;
+  padding: 0 10px 6px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.toolbar__day {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.toolbar__date {
+  padding: 8px 12px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--surface-sunken);
@@ -131,5 +263,50 @@
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  min-inline-size: 160px;
+}
+
+.toolbar__date:hover {
+  border-color: var(--text-muted);
+}
+
+.toolbar__date:focus-visible {
+  outline: 2px solid var(--series);
+  outline-offset: 2px;
+}
+
+/* Het kalendericoon van de browser is zwart en verdwijnt in het donkere thema. */
+.toolbar__date::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  filter: var(--calendar-icon-filter, none);
+}
+
+.toolbar__day-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 24px;
+  block-size: 24px;
+  padding: 0;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.toolbar__day-clear:hover {
+  color: var(--text-primary);
+  background: var(--surface-hover);
+}
+
+/* Een gekozen dag toont altijd het hele etmaal, dus de periodeknoppen doen
+   dan niets. Ze blijven staan zodat de rij niet verspringt. */
+.segmented[data-disabled] {
+  opacity: 0.45;
+}
+
+.segmented[data-disabled] .segmented__option {
+  cursor: not-allowed;
 }

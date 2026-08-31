@@ -1,0 +1,147 @@
+.heatmap {
+  padding: 18px 20px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.heatmap__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin-block-end: 14px;
+}
+
+.heatmap__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 650;
+  color: var(--text-primary);
+}
+
+.heatmap__subtitle {
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.heatmap__empty {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--text-muted);
+}
+
+/* Vierentwintig kolommen passen op een telefoon nooit; laat het raster daar
+   schuiven in plaats van de cellen tot streepjes te knijpen. */
+.heatmap__scroll {
+  overflow-x: auto;
+  padding-block-end: 4px;
+}
+
+.heatmap__grid {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-inline-size: 560px;
+}
+
+.heatmap__row {
+  display: grid;
+  grid-template-columns: 92px repeat(24, minmax(0, 1fr));
+  gap: 3px;
+  align-items: center;
+}
+
+.heatmap__day-label {
+  font-size: 11.5px;
+  font-weight: 550;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.heatmap__hour-label {
+  font-size: 10.5px;
+  color: var(--text-muted);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.heatmap__cell {
+  position: relative;
+  display: block;
+  block-size: 20px;
+  border-radius: 4px;
+  /* Fallback voor het geval een cel zonder data-level zou renderen. */
+  background: var(--heat, var(--surface-sunken));
+  transition: outline-color 120ms ease;
+  outline: 2px solid transparent;
+  outline-offset: 1px;
+}
+
+.heatmap__cell:hover {
+  outline-color: var(--text-muted);
+}
+
+/* Eén hue voor het normale bereik, statuskleuren aan de top. Kleur draagt de
+   betekenis nooit alleen: elke cel heeft een title met de exacte cijfers, en
+   een 429 krijgt daarnaast een ruitje. */
+.heatmap__cell[data-level='empty'] {
+  --heat: var(--surface-sunken);
+}
+
+.heatmap__cell[data-level='l1'] {
+  --heat: color-mix(in srgb, var(--series) 18%, var(--surface-sunken));
+}
+
+.heatmap__cell[data-level='l2'] {
+  --heat: color-mix(in srgb, var(--series) 42%, var(--surface-sunken));
+}
+
+.heatmap__cell[data-level='l3'] {
+  --heat: color-mix(in srgb, var(--series) 70%, var(--surface-sunken));
+}
+
+.heatmap__cell[data-level='warn'] {
+  --heat: var(--status-warning);
+}
+
+.heatmap__cell[data-level='crit'] {
+  --heat: var(--status-critical);
+}
+
+.heatmap__marker {
+  position: absolute;
+  inset-block-start: 50%;
+  inset-inline-start: 50%;
+  inline-size: 6px;
+  block-size: 6px;
+  translate: -50% -50%;
+  rotate: 45deg;
+  background: var(--surface);
+  border-radius: 1px;
+}
+
+.heatmap__legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.heatmap__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.heatmap__cell--sample {
+  inline-size: 14px;
+  block-size: 14px;
+  border: 1px solid var(--border);
+}

@@ -123,3 +123,15 @@
   font-weight: 650;
   color: var(--status-critical);
 }
+/* Staat bewust boven de 429-regel: wat er nog kán gebeuren is dringender dan
+   wat er al gebeurd is. */
+.tile__projection {
+  margin-block-start: 8px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--status-warning);
+}
+
+.tile__projection strong {
+  font-weight: 650;
+}

@@ -3,20 +3,36 @@ import { LIVE_URL } from '../api/client'
 import { windowLabel, WINDOW_KEYS, type Measurement, type WindowKey } from '../api/contract'
 import { AlertList, collectAlerts } from '../components/AlertList'
 import { DataTable } from '../components/DataTable'
+import { ExportDialog } from '../components/ExportDialog'
 import { LimitChart, type ChartPoint } from '../components/LimitChart'
 import { LimitTile } from '../components/LimitTile'
 import { StatusBadge } from '../components/StatusBadge'
 import { ToastStack } from '../components/ToastStack'
 import { RANGES, Toolbar, type RangeId } from '../components/Toolbar'
+import { ComparisonChart } from '../components/ComparisonChart'
+import { UsageHeatmap } from '../components/UsageHeatmap'
 import { useToasts } from '../hooks/useToasts'
+import { useComparison } from '../hooks/useComparison'
 import { useCredentials } from '../hooks/useCredentials'
+import { useNotifications } from '../hooks/useNotifications'
 import { useRateLimits } from '../hooks/useRateLimits'
 import { useTimezone, type TimeZoneMode } from '../hooks/useTimezone'
-import { formatNumber, formatRelative, formatTimeExact, zoneCaption } from '../lib/format'
+import {
+  dayKey,
+  formatDayKey,
+  formatNumber,
+  formatRelative,
+  formatTimeExact,
+  zoneCaption,
+} from '../lib/format'
+import { projectLimit } from '../lib/projection'
 import { statusOf, worstStatus } from '../lib/status'
 
 const POLL_INTERVAL_MS = 60_000
 const PRIMARY_WINDOW: WindowKey = '5min'
+
+/** Hoogte van de heatmap. Vast, zodat het blok niet meegroeit met de data. */
+const HEATMAP_DAYS = 7
 const SECONDARY_WINDOWS = WINDOW_KEYS.filter((key) => key !== PRIMARY_WINDOW)
 
 export type BucketSize = 'hour' | 'day'
@@ -48,6 +64,11 @@ function withinRange(measurements: Measurement[], range: RangeId): Measurement[]
   if (!preset || !('minutes' in preset)) return measurements
 
   return lastMinutes(measurements, preset.minutes)
+}
+
+/** Alle metingen van één kalenderdag: middernacht tot middernacht. */
+function onDay(measurements: Measurement[], day: string, mode: TimeZoneMode): Measurement[] {
+  return measurements.filter((measurement) => dayKey(measurement.timestamp, mode) === day)
 }
 
 /** Begin van het uur of de dag waar dit tijdstip in valt, in de getoonde zone. */
@@ -111,55 +132,94 @@ function toChartPoints(measurements: Measurement[], key: WindowKey): ChartPoint[
   })
 }
 
-const FIVE_MIN_MS = 5 * 60 * 1000
+/** Het tijdvak dat een grafiek beslaat. */
+interface Span {
+  start: number
+  end: number
+}
 
 /**
- * Vult de volle terugblik met 5-minuten-slots en zet elk slot waarvoor geen
- * meting bestaat op 0. Zonder dit krimpt de as tot wat er tot nu toe opgehaald is
- * de app tot nu toe heeft opgehaald, en toont een "laatste 7 dagen"-grafiek
- * in werkelijkheid een paar minuten.
+ * Alle bucketstarts binnen een tijdvak, in de getoonde zone.
  *
- * Let op bij het lezen: een 0 betekent hier "niet gemeten", niet "nul calls".
- * Zodra de back-end echte historie levert vullen die slots zich vanzelf.
+ * Stapt niet blind met 24 uur door: op een dag waarop de klok verspringt duurt
+ * die 23 of 25 uur. Elke stap wordt daarom opnieuw op het bucketbegin gezet.
  */
-function paddedChartPoints(
-  measurements: Measurement[],
-  key: WindowKey,
-  minutes: number,
-): ChartPoint[] {
-  const last = measurements.at(-1)
-  if (!last) return []
+function bucketStarts(span: Span, bucket: BucketSize, mode: TimeZoneMode): number[] {
+  const step = bucket === 'hour' ? 60 * 60_000 : 24 * 60 * 60_000
+  const overshoot = bucket === 'day' ? 60 * 60_000 : 0
+  const last = bucketStart(span.end, bucket, mode)
 
-  const end = Date.parse(last.timestamp)
-  const start = end - minutes * 60_000
-  const limit = last.limits[key].limit
+  const starts: number[] = []
+  let cursor = bucketStart(span.start, bucket, mode)
 
-  const bySlot = new Map(
-    measurements.map((measurement) => [Date.parse(measurement.timestamp), measurement]),
-  )
-
-  const points: ChartPoint[] = []
-  for (let slot = start; slot <= end; slot += FIVE_MIN_MS) {
-    const measurement = bySlot.get(slot)
-    const reading = measurement?.limits[key]
-
-    points.push({
-      t: slot,
-      iso: new Date(slot).toISOString(),
-      used: reading?.used ?? 0,
-      limit: reading?.limit ?? limit,
-      ratio: reading && reading.limit > 0 ? reading.used / reading.limit : 0,
-      hit429: reading?.hit_429 ?? false,
-    })
+  while (cursor <= last) {
+    starts.push(cursor)
+    cursor = bucketStart(cursor + step + overshoot, bucket, mode)
   }
 
-  return points
+  return starts
+}
+
+/**
+ * De punten voor een samengevatte grafiek: per uur of per dag de hoogste stand
+ * binnen dat tijdvak, met lege buckets erbij zodat de as het volle tijdvak
+ * beslaat in plaats van alleen wat er toevallig gemeten is.
+ *
+ * Let op bij het lezen: een 0 betekent hier "niet gemeten", niet "nul calls".
+ *
+ * Er werd eerder een raster van 5-minuten-slots opgevuld en daarna samengevat.
+ * Dat verloor metingen: de back-end meet niet op de seconde nauwkeurig, dus een
+ * meting van 14:59:56 viel naast elk slot en telde niet mee.
+ */
+function bucketedPoints(
+  measurements: Measurement[],
+  key: WindowKey,
+  span: Span,
+  bucket: BucketSize,
+  mode: TimeZoneMode,
+): ChartPoint[] {
+  const inSpan = measurements.filter((measurement) => {
+    const at = Date.parse(measurement.timestamp)
+    return at >= span.start && at <= span.end
+  })
+
+  const byBucket = new Map(
+    aggregate(toChartPoints(inSpan, key), bucket, mode).map((point) => [point.t, point]),
+  )
+
+  // De limiet van de laatste meting geldt ook voor de lege buckets: anders zakt
+  // de limietlijn naar nul zodra er een gat in de reeks zit.
+  const limit = measurements.at(-1)?.limits[key].limit ?? 0
+
+  return bucketStarts(span, bucket, mode).map(
+    (at) =>
+      byBucket.get(at) ?? {
+        t: at,
+        iso: new Date(at).toISOString(),
+        used: 0,
+        limit,
+        ratio: 0,
+        hit429: false,
+      },
+  )
+}
+
+/** Laatste milliseconde van een dag als `2026-08-28`, in de getoonde zone. */
+function endOfDay(key: string, mode: TimeZoneMode): number {
+  const [year, month, day] = key.split('-').map(Number)
+
+  return mode === 'utc'
+    ? Date.UTC(year, month - 1, day, 23, 59, 59, 999)
+    : new Date(year, month - 1, day, 23, 59, 59, 999).getTime()
 }
 
 export function DashboardPage() {
-  const [range, setRange] = useState<RangeId>('all')
+  const [range, setRange] = useState<RangeId>('24h')
   const [autoRefresh, setAutoRefresh] = useState(false)
   const [storeId, setStoreId] = useState('')
+  // Leeg betekent: volg de periodeknoppen vanaf de laatste meting.
+  const [day, setDay] = useState('')
+  const [isExportOpen, setIsExportOpen] = useState(false)
   const { mode: zone } = useTimezone()
 
   // De keuzelijst komt uit de opgeslagen credentials: dat zijn precies de
@@ -176,21 +236,106 @@ export function DashboardPage() {
       storeId,
     })
 
-  const visible = useMemo(() => withinRange(measurements, range), [measurements, range])
+  // Vergelijken heeft pas betekenis vanaf twee webshops; bij eentje zegt de
+  // gewone grafiek hetzelfde.
+  const comparison = useComparison(
+    stores.length >= 2 ? stores : [],
+    autoRefresh ? POLL_INTERVAL_MS : null,
+  )
+
+  const visible = useMemo(
+    () => (day ? onDay(measurements, day, zone) : withinRange(measurements, range)),
+    [measurements, range, day, zone],
+  )
+
+  // Grenzen voor de datumkiezer, zodat je geen dagen kunt kiezen waarvoor
+  // sowieso niets gemeten is.
+  const dayRange = useMemo(() => {
+    const first = measurements.at(0)
+    const last = measurements.at(-1)
+    if (!first || !last) return null
+
+    return {
+      min: dayKey(first.timestamp, zone),
+      max: dayKey(last.timestamp, zone),
+    }
+  }, [measurements, zone])
   const latest = visible.at(-1)
   const alerts = useMemo(() => collectAlerts(visible), [visible])
 
+  /**
+   * Waar de samengevatte grafieken op eindigen. Kies je een dag, dan is dat
+   * middernacht van die dag; anders de laatste meting die er is.
+   */
+  const anchor = useMemo(
+    () => (day ? endOfDay(day, zone) : Date.parse(measurements.at(-1)?.timestamp ?? '')),
+    [day, zone, measurements],
+  )
+
+  /**
+   * De ondertitel onder een samengevatte grafiek. Met een gekozen dag noemt hij
+   * die dag, zodat je niet hoeft te raden of je naar vandaag of naar vrijdag kijkt.
+   */
+  const spanLabelFor = (key: WindowKey): string | undefined => {
+    const lookback = LOOKBACK[key]
+    if (!lookback) return undefined
+    if (!day) return lookback.label
+
+    const dayLabel = formatDayKey(day, zone)
+    const days = Math.round(lookback.minutes / (24 * 60))
+
+    return days <= 1 ? `${dayLabel}, per uur` : `${days} dagen t/m ${dayLabel}, per dag`
+  }
+
+  const heatmapDays = useMemo(() => {
+    if (Number.isNaN(anchor)) return []
+
+    const span = { start: anchor - (HEATMAP_DAYS - 1) * 24 * 60 * 60_000, end: anchor }
+
+    // Nieuwste bovenaan: dat is wat je als eerste wilt zien.
+    return bucketStarts(span, 'day', zone)
+      .map((at) => dayKey(new Date(at).toISOString(), zone))
+      .slice(-HEATMAP_DAYS)
+      .reverse()
+  }, [anchor, zone])
+
   const chartPoints = useMemo(() => {
     const points = {} as Record<WindowKey, ChartPoint[]>
+
     for (const key of WINDOW_KEYS) {
       const lookback = LOOKBACK[key]
-      // Zonder eigen terugblik volgt het venster de filterrij bovenaan.
-      points[key] = lookback
-        ? aggregate(paddedChartPoints(measurements, key, lookback.minutes), lookback.bucket, zone)
-        : toChartPoints(visible, key)
+
+      if (!lookback) {
+        // Zonder eigen terugblik volgt het venster de filterrij bovenaan.
+        points[key] = toChartPoints(visible, key)
+        continue
+      }
+
+      points[key] = Number.isNaN(anchor)
+        ? []
+        : bucketedPoints(
+            measurements,
+            key,
+            { start: anchor - lookback.minutes * 60_000, end: anchor },
+            lookback.bucket,
+            zone,
+          )
     }
+
     return points
-  }, [visible, measurements, zone])
+  }, [visible, measurements, zone, anchor])
+
+  /**
+   * Alleen zinvol in de live-weergave: kijk je naar een dag uit het verleden,
+   * dan is "op dit tempo" een uitspraak over een tempo dat allang voorbij is.
+   */
+  const projections = useMemo(() => {
+    const found = {} as Record<WindowKey, ReturnType<typeof projectLimit>>
+    for (const key of WINDOW_KEYS) {
+      found[key] = day ? null : projectLimit(measurements, key)
+    }
+    return found
+  }, [measurements, day])
 
   const hitCounts = useMemo(() => {
     const counts = { '5min': 0, '1hour': 0, '24hour': 0 } as Record<WindowKey, number>
@@ -207,6 +352,7 @@ export function DashboardPage() {
     : null
 
   const { toasts, push, dismiss } = useToasts()
+  const notifications = useNotifications()
 
   /**
    * Meldt alleen 429's die er de vorige keer nog niet waren.
@@ -239,17 +385,50 @@ export function DashboardPage() {
 
     if (isNewSelection) return
 
-    for (const alert of alerts.filter((candidate) => !previous!.ids.has(idOf(candidate)))) {
+    const fresh = alerts.filter((candidate) => !previous!.ids.has(idOf(candidate)))
+    const where = storeId ? `Store ${storeId}` : 'Webshop'
+
+    for (const alert of fresh) {
       push({
         status: 'critical',
         title: `${windowLabel(alert.windowKey)}-limiet geraakt`,
-        body: `${storeId ? `Store ${storeId}` : 'Webshop'} kreeg een 429 om ${formatTimeExact(
+        body: `${where} kreeg een 429 om ${formatTimeExact(
           alert.iso,
           zone,
         )} — ${formatNumber(alert.used)} van ${formatNumber(alert.limit)} calls.`,
       })
     }
-  }, [alerts, selectionKey, push, storeId, zone, isInitialLoading, measurements.length])
+
+    // Eén systeemmelding voor de hele lading. Raken drie vensters tegelijk hun
+    // limiet, dan is dat één gebeurtenis; drie losse meldingen zouden het
+    // meldingencentrum vullen met hetzelfde nieuws.
+    if (fresh.length > 0) {
+      const first = fresh[0]
+      const isSingle = fresh.length === 1
+
+      notifications.notify(
+        isSingle
+          ? `${windowLabel(first.windowKey)}-limiet geraakt`
+          : `${fresh.length} limieten geraakt`,
+        isSingle
+          ? `${where} kreeg een 429 om ${formatTimeExact(first.iso, zone)} — ${formatNumber(
+              first.used,
+            )} van ${formatNumber(first.limit)} calls.`
+          : `${where} kreeg een 429 in ${fresh
+              .map((alert) => windowLabel(alert.windowKey))
+              .join(', ')}.`,
+      )
+    }
+  }, [
+    alerts,
+    selectionKey,
+    push,
+    notifications,
+    storeId,
+    zone,
+    isInitialLoading,
+    measurements.length,
+  ])
 
   return (
     <>
@@ -263,6 +442,12 @@ export function DashboardPage() {
         stores={stores}
         storeId={storeId}
         onStoreChange={setStoreId}
+        day={day}
+        onDayChange={setDay}
+        dayRange={dayRange}
+        notifications={notifications}
+        onExport={() => setIsExportOpen(true)}
+        canExport={measurements.length > 0}
       />
 
       <p className="app__meta">
@@ -311,6 +496,7 @@ export function DashboardPage() {
               reading={latest.limits[PRIMARY_WINDOW]}
               variant="hero"
               hitCount={hitCounts[PRIMARY_WINDOW]}
+              projection={projections[PRIMARY_WINDOW]}
             />
             {SECONDARY_WINDOWS.map((key) => (
               <LimitTile
@@ -318,12 +504,21 @@ export function DashboardPage() {
                 windowKey={key}
                 reading={latest.limits[key]}
                 hitCount={hitCounts[key]}
+                projection={projections[key]}
               />
             ))}
           </section>
 
           <section className="app__main">
-            <LimitChart windowKey={PRIMARY_WINDOW} points={chartPoints[PRIMARY_WINDOW]} />
+            <LimitChart
+              windowKey={PRIMARY_WINDOW}
+              points={chartPoints[PRIMARY_WINDOW]}
+              spanLabel={
+                day
+                  ? formatDayKey(day, zone)
+                  : RANGES.find((preset) => preset.id === range)?.label.toLowerCase()
+              }
+            />
             <AlertList alerts={alerts} />
           </section>
 
@@ -334,15 +529,46 @@ export function DashboardPage() {
                 windowKey={key}
                 points={chartPoints[key]}
                 variant="compact"
-                spanLabel={LOOKBACK[key]?.label}
+                spanLabel={spanLabelFor(key)}
                 bucket={LOOKBACK[key]?.bucket}
               />
             ))}
           </section>
 
+          {/* Vol bereik, net als de uur- en daggrafieken: een patroon per uur
+              zie je pas over meerdere dagen, niet binnen de gekozen periode. */}
+          {stores.length >= 2 && (
+            <ComparisonChart
+              byStore={comparison.byStore}
+              windowKey={PRIMARY_WINDOW}
+              isLoading={comparison.isLoading}
+              failures={comparison.failures}
+            />
+          )}
+
+          <UsageHeatmap
+            measurements={measurements}
+            windowKey={PRIMARY_WINDOW}
+            days={heatmapDays}
+            spanLabel={
+              day
+                ? `${HEATMAP_DAYS} dagen t/m ${formatDayKey(day, zone)}`
+                : `laatste ${HEATMAP_DAYS} dagen`
+            }
+          />
+
           <DataTable measurements={visible} />
         </div>
       )}
+
+      {/* De volle reeks gaat mee, niet alleen wat de periodefilter toont:
+          in de dialoog kies je zelf het venster. */}
+      <ExportDialog
+        open={isExportOpen}
+        onClose={() => setIsExportOpen(false)}
+        measurements={measurements}
+        storeId={storeId}
+      />
 
       <ToastStack toasts={toasts} onDismiss={dismiss} />
     </>

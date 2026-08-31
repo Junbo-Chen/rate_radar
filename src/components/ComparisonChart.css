@@ -1,0 +1,88 @@
+.comparison {
+  padding: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.comparison__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  margin-block-end: 16px;
+}
+
+.comparison__title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 650;
+  color: var(--text-primary);
+}
+
+.comparison__subtitle {
+  font-size: 12.5px;
+  color: var(--text-muted);
+}
+
+.comparison__empty {
+  margin: 0;
+  padding-block: 24px;
+  font-size: 13px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.comparison__failure {
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  font-size: 12.5px;
+  color: var(--status-critical);
+  background: color-mix(in srgb, var(--status-critical) 8%, transparent);
+  border-radius: var(--radius-sm);
+}
+
+/* De grafiek mag smaller worden dan zijn inhoud; dan schuift hij in zichzelf
+   in plaats van de hele pagina breed te maken. */
+.comparison__chart {
+  min-inline-size: 0;
+  overflow-x: auto;
+}
+
+.comparison__ranking {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 20px;
+  margin: 14px 0 0;
+  padding: 12px 0 0;
+  list-style: none;
+  border-block-start: 1px solid var(--border);
+}
+
+.comparison__rank {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+}
+
+.comparison__swatch {
+  inline-size: 10px;
+  block-size: 10px;
+  border-radius: 3px;
+}
+
+.comparison__store {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.comparison__peak {
+  color: var(--text-secondary);
+}
+
+.comparison__leader {
+  font-weight: 650;
+  color: var(--status-warning);
+}

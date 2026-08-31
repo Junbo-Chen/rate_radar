@@ -118,3 +118,34 @@ export function zoneCaption(mode: TimeZoneMode): string {
 
   return `tijden in lokale tijd (UTC${sign}${offset})`;
 }
+/**
+ * `2026-08-28T14:30` voor een `<input type="datetime-local">`, in de zone die
+ * het dashboard toont. Zo'n veld kent zelf geen zone: het toont precies de
+ * cijfers die je erin zet, dus die moeten hier al kloppen.
+ */
+export function toDateTimeInput(ms: number, mode: TimeZoneMode): string {
+  const date = new Date(ms);
+  const pad = (value: number) => String(value).padStart(2, "0");
+
+  if (mode === "utc") {
+    return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(
+      date.getUTCDate(),
+    )}T${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}`;
+  }
+
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(
+    date.getHours(),
+  )}:${pad(date.getMinutes())}`;
+}
+
+/** Omgekeerde van toDateTimeInput. NaN zolang het veld nog onvolledig is. */
+export function fromDateTimeInput(value: string, mode: TimeZoneMode): number {
+  const parts = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value);
+  if (parts === null) return Number.NaN;
+
+  const [year, month, day, hour, minute] = parts.slice(1).map(Number);
+
+  return mode === "utc"
+    ? Date.UTC(year, month - 1, day, hour, minute)
+    : new Date(year, month - 1, day, hour, minute).getTime();
+}
